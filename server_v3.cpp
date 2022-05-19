@@ -292,11 +292,11 @@ int main(int argc, char *argv[])
 
         while(1)
         {
-            if (player_count <= 10){
+            if (player_count <= 2){
                 int *cli_sockfd = new int[2*sizeof(int)];
 
                 int num_conn = 0;
-                while(num_conn < 2){
+                while(num_conn < 2 && player_count <= 2){
                     tcp::socket *ptr_socket = new tcp::socket(io_context);
                 
                     #ifdef DEBUG
