@@ -183,7 +183,7 @@ int check_board(char board[][3], int last_move)
 
 
 //void *run_game(void *thread_data, tcp::socket *ptr_socket)
-void *run_game(void *thread_data)
+void *run_game(void *thread_data, tcp::socket *ptr_socket)
 {
     int *cli_sockfd = (int*)thread_data;
 
@@ -272,9 +272,11 @@ void *run_game(void *thread_data)
     pthread_mutex_unlock(&mutexcount);
     
     delete []cli_sockfd;
-    delete []ptr_socket;
-
-    pthread_exit(NULL);
+    // delete []ptr_socket;
+    ptr_socket->close();
+    delete ptr_socket;
+    
+    return 0;
 }
 
 
@@ -286,11 +288,11 @@ int main(int argc, char *argv[])
         fprintf(stderr,"ERROR, no port provided\n");
         exit(1);
     }
-   /* 
+  
     char board[3][3] = { {' ', ' ', ' '},
                          {' ', ' ', ' '},
                          {' ', ' ', ' '} };
-
+  /*
     cout << endl << "Wait for Server to load..!!" << endl;
     cout << endl << "Will load in 10 Sec " << endl << "Loading "; 
     for(int i = 0; i < 10; i++) {
@@ -320,14 +322,14 @@ while (progress <= 1.0) {
 }
 std::cout << std::endl;
 
-
+*/
 
     cout << endl << endl;
     cout << "WELCOME TO THE TIC-TAC-TOE SERVER GAME" << endl;
     cout << "--------------------------------------" << endl;
     draw_board(board);
     cout << endl << "Wait for Client to connect..!!" << endl;
-*/
+
     asio::io_context io_context;
     tcp::acceptor acceptor(io_context, tcp::endpoint(tcp::v4(), atoi(argv[1])));
 
@@ -379,7 +381,7 @@ std::cout << std::endl;
 
                 num_conn++;
 
-delete []ptr_socket;
+// delete []ptr_socket;
             }
         
             #ifdef DEBUG
@@ -387,7 +389,7 @@ delete []ptr_socket;
             #endif
         
 //	    std::thread thread1(run_game, (void*)cli_sockfd, ptr_socket);
-	    std::thread thread1(run_game, (void*)cli_sockfd);
+	    std::thread thread1(run_game, (void*)cli_sockfd, ptr_socket);
 	    thread1.detach();
 
 	    //delete ptr_socket;
