@@ -4,6 +4,7 @@
 #include <iostream>
 #include <iomanip>
 #include <asio.hpp>
+#include <fstream>
 
 using namespace std;
 using asio::ip::tcp;
@@ -138,12 +139,31 @@ void design()
 int main(int argc, char *argv[])
 {
     try {
-		// validate no of arguments
-		if (argc < 3)
-		{
-		    	cout << "Usage " << argv[0] << " hostname port" << endl;
-	    		exit(1);
-		}
+		
+        std::string portno;
+        std::string hostname;
+
+        std::ifstream cFile ("../config_file.txt");
+        if (cFile.is_open())
+        {
+            std::string line;
+            while(getline(cFile, line)){
+                line.erase(std::remove_if(line.begin(), line.end(), ::isspace), line.end());
+                if(line[0] == '#' || line.empty())
+                    continue;
+                auto delimiterPos = line.find("=");
+                auto name = line.substr(0, delimiterPos);
+                auto value = line.substr(delimiterPos + 1);
+                std::cout << "client is running on " << name << ": " << value << '\n';
+
+                if(name == "hostname") hostname = value;
+                if(name == "portno") portno = value;
+            }
+            
+        }
+        else {
+            std::cerr << "Couldn't open config file for reading.\n";
+        }
 
 		design();
 		
@@ -152,7 +172,7 @@ int main(int argc, char *argv[])
 
 		// Converting hostname port to endpoint address(es)
 		tcp::resolver resolver(io_context);
-		tcp::resolver::results_type endpoints = resolver.resolve(argv[1], argv[2]);
+		tcp::resolver::results_type endpoints = resolver.resolve(hostname, portno);
 
 		// create a socket
 		tcp::socket socket(io_context);

@@ -4,6 +4,7 @@
 #include <asio.hpp>
 #include <iomanip>
 #include <thread>
+#include <fstream>
 
 using namespace std;
 using asio::ip::tcp;
@@ -323,14 +324,32 @@ void design()
 int main(int argc, char *argv[])
 {
   try {
-		if (argc < 2) {
-			cout << "ERROR, no port provided" << endl;
-			exit(1);
-		}
+		int portno;
+
+        std::ifstream cFile ("../config_file.txt");
+        if (cFile.is_open())
+        {
+            std::string line;
+            while(getline(cFile, line)){
+                line.erase(std::remove_if(line.begin(), line.end(), ::isspace), line.end());
+                if(line[0] == '#' || line.empty())
+                    continue;
+                auto delimiterPos = line.find("=");
+                auto name = line.substr(0, delimiterPos);
+                auto value = line.substr(delimiterPos + 1);
+                std::cout << "server is running on " << name << ": " << value << '\n';
+
+                if(name == "portno") portno = std::stoi(value);
+            }
+            
+        }
+        else {
+            std::cerr << "Couldn't open config file for reading.\n";
+        }
 		
 		design();
         asio::io_context io_context;
-        tcp::acceptor acceptor(io_context, tcp::endpoint(tcp::v4(), atoi(argv[1])));
+        tcp::acceptor acceptor(io_context, tcp::endpoint(tcp::v4(), portno));
 	    
 		pthread_mutex_init(&mutexcount, NULL); 
 	   
