@@ -6,5 +6,5 @@
 ---
 
 ### Requirements
--Download asio-1.22.1.zip and extract it.
+- Download asio-1.22.1.zip and extract it.
 - update locations of your project and asio folder in MakeFile
