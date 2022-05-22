@@ -2,6 +2,7 @@
 #include <iostream>
 #include <string>
 #include <asio.hpp>
+#include <iomanip>
 #include <thread>
 
 using namespace std;
@@ -9,12 +10,11 @@ using asio::ip::tcp;
 
 int player_count = 0;
 pthread_mutex_t mutexcount;
-tcp::socket *ptr_socket;
 
 void error(const char *msg)
 {
     perror(msg);
-    pthread_exit(NULL);
+    exit(1);
 }
 
 void write_client_int(int cli_sockfd, int msg)
@@ -54,7 +54,9 @@ int recv_int(int cli_sockfd)
     
     if (n < 0 || n != sizeof(int))  return -1;
 
-    printf("[DEBUG] Received int: %d\n", msg);
+    #ifdef DEBUG
+	cout << "[DEBUG] Received int: " << msg << endl;
+	#endif
     
     return msg;
 }
@@ -63,10 +65,10 @@ int recv_int(int cli_sockfd)
 int get_player_move(int cli_sockfd)
 {
     #ifdef DEBUG
-    printf("[DEBUG] Getting player move...\n");
-    #endif
+    cout << "[DEBUG] Getting player move..." << endl;
+	#endif
     
-    write_client_msg(cli_sockfd, "TRN");
+	write_client_msg(cli_sockfd, "TRN");
 
     return recv_int(cli_sockfd);
 }
@@ -77,14 +79,14 @@ int check_move(char board[][3], int move, int player_id)
     if ((move == 9) || (board[move/3][move%3] == ' ')) { 
         
         #ifdef DEBUG
-        printf("[DEBUG] Player %d's move was valid.\n", player_id);
+        cout << "[DEBUG] Player " << player_id << "'s move was valid." << endl;
         #endif
         
         return 1;
    }
    else {       
        #ifdef DEBUG
-       printf("[DEBUG] Player %d's move was invalid.\n", player_id);
+       cout << "[DEBUG] Player " << player_id << "'s move was invalid." << endl;
        #endif
     
        return 0;
@@ -97,25 +99,25 @@ void update_board(char board[][3], int move, int player_id)
     board[move/3][move%3] = player_id ? 'X' : 'O';
     
     #ifdef DEBUG
-    printf("[DEBUG] Board updated.\n");
+    cout << "[DEBUG] Board updated." << endl;
     #endif
 }
 
 
 void draw_board(char board[][3])
 {
-    printf(" %c | %c | %c \n", board[0][0], board[0][1], board[0][2]);
-    printf("-----------\n");
-    printf(" %c | %c | %c \n", board[1][0], board[1][1], board[1][2]);
-    printf("-----------\n");
-    printf(" %c | %c | %c \n", board[2][0], board[2][1], board[2][2]);
+    cout << setw(25) << board[0][0] << " | " << board[0][1] << " | " << board[0][2] << " " << endl;
+    cout << setw(33) << "---------" << endl;
+    cout << setw(25) << board[1][0] << " | " << board[1][1] << " | " << board[1][2] << " " << endl;
+    cout << setw(33) << "---------" << endl;
+    cout << setw(25) << board[2][0] << " | " << board[2][1] << " | " << board[2][2] << " " << endl;
 }
 
 
 void send_update(int * cli_sockfd, int move, int player_id)
 {
     #ifdef DEBUG
-    printf("[DEBUG] Sending update...\n");
+    cout << "[DEBUG] Sending update..." << endl;
     #endif
     
     write_clients_msg(cli_sockfd, "UPD");
@@ -125,7 +127,7 @@ void send_update(int * cli_sockfd, int move, int player_id)
     write_clients_int(cli_sockfd, move);
     
     #ifdef DEBUG
-    printf("[DEBUG] Update sent.\n");
+    cout << "[DEBUG] Update sent." << endl;
     #endif
 }
 
@@ -135,14 +137,14 @@ void send_player_count(int cli_sockfd)
     write_client_int(cli_sockfd, player_count);
 
     #ifdef DEBUG
-    printf("[DEBUG] Player Count Sent.\n");
+    cout << "[DEBUG] Player Count Sent." << endl;
     #endif
 }
 
 int check_board(char board[][3], int last_move)
 {
     #ifdef DEBUG
-    printf("[DEBUG] Checking for a winner...\n");
+    cout << "[DEBUG] Checking for a winner..." << endl;
     #endif
    
     int row = last_move/3;
@@ -150,25 +152,26 @@ int check_board(char board[][3], int last_move)
 
     if ( board[row][0] == board[row][1] && board[row][1] == board[row][2] ) { 
         #ifdef DEBUG
-        printf("[DEBUG] Win by row %d.\n", row);
+       cout << "[DEBUG] Win by row " << row <<"." << endl;
         #endif 
         return 1;
     }
     else if ( board[0][col] == board[1][col] && board[1][col] == board[2][col] ) { 
         #ifdef DEBUG
-        printf("[DEBUG] Win by column %d.\n", col);
+        cout << "[DEBUG] Win by column " << col << "." << endl;
         #endif 
         return 1;
     }
-    else if (!(last_move % 2)) { if ( (last_move == 0 || last_move == 4 || last_move == 8) && (board[1][1] == board[0][0] && board[1][1] == board[2][2]) ) {  
+    else if (!(last_move % 2)) { 
+        if ( (last_move == 0 || last_move == 4 || last_move == 8) && (board[1][1] == board[0][0] && board[1][1] == board[2][2]) ) {  
             #ifdef DEBUG
-            printf("[DEBUG] Win by backslash diagonal.\n");
+            cout << "[DEBUG] Win by backslash diagonal." << endl;
             #endif 
             return 1;
         }
         if ( (last_move == 2 || last_move == 4 || last_move == 6) && (board[1][1] == board[0][2] && board[1][1] == board[2][0]) ) { 
             #ifdef DEBUG
-            printf("[DEBUG] Win by frontslash diagonal.\n");
+            cout << "[DEBUG] Win by frontslash diagonal." << endl;
             #endif 
             return 1;
         }
@@ -182,8 +185,7 @@ int check_board(char board[][3], int last_move)
 }
 
 
-//void *run_game(void *thread_data, tcp::socket *ptr_socket)
-void *run_game(void *thread_data, tcp::socket *ptr_socket)
+void *run_game(void *thread_data)
 {
     int *cli_sockfd = (int*)thread_data;
 
@@ -196,7 +198,7 @@ void *run_game(void *thread_data, tcp::socket *ptr_socket)
     write_clients_msg(cli_sockfd, "SRT");
 
     #ifdef DEBUG
-    printf("[DEBUG] Sent start message.\n");
+    cout << "[DEBUG] Sent start message." << endl;
     #endif
 
     draw_board(board);
@@ -215,17 +217,17 @@ void *run_game(void *thread_data, tcp::socket *ptr_socket)
         while(!valid) {             
             move = get_player_move(cli_sockfd[player_turn]);
             if (move == -1) break; 
-            printf("Player %d played position %d\n", player_turn, move);
+            cout << endl << "Player " << player_turn << " played position " << move << endl;
                 
             valid = check_move(board, move, player_turn);
             if (!valid) { 
-                printf("Move was invalid. Let's try this again...\n");
+                cout << "Move was invalid. Let's try this again..." << endl;
                 write_client_msg(cli_sockfd[player_turn], "INV");
             }
         }
 
 	    if (move == -1) { 
-            printf("Player disconnected.\n");
+            cout << "Player disconnected." << endl;
             break;
         }
         else if (move == 9) {
@@ -245,10 +247,10 @@ void *run_game(void *thread_data, tcp::socket *ptr_socket)
             if (game_over == 1) {
                 write_client_msg(cli_sockfd[player_turn], "WIN");
                 write_client_msg(cli_sockfd[(player_turn + 1) % 2], "LSE");
-                printf("Player %d won.\n", player_turn);
+                cout << "Player " << player_turn << " won." << endl;
             }
             else if (turn_count == 8) {                
-                printf("Draw.\n");
+                cout << "Draw." << endl;
                 write_clients_msg(cli_sockfd, "DRW");
                 game_over = 1;
             }
@@ -259,7 +261,7 @@ void *run_game(void *thread_data, tcp::socket *ptr_socket)
         }
     }
 
-    printf("Game over.\n");
+    cout << "Game over." << endl;
 
 	close(cli_sockfd[0]);
     close(cli_sockfd[1]);
@@ -272,139 +274,128 @@ void *run_game(void *thread_data, tcp::socket *ptr_socket)
     pthread_mutex_unlock(&mutexcount);
     
     delete []cli_sockfd;
-    // delete []ptr_socket;
-    ptr_socket->close();
-    delete ptr_socket;
-    
-    return 0;
+
+    pthread_exit(NULL);
 }
 
+void design()
+{
+    char board[3][3] = { {'X', 'O', 'X'},
+                            {'O', 'X', 'O'},
+                            {'O', ' ', 'X'} };
+
+    cout << "\nWait for Server to load..!!" << endl;
+	this_thread::sleep_for(2000ms);
+    cout << "Loading . . . " << endl;
+
+    float progress = 0.0;
+
+    while (progress <= 1.0) {
+        int barWidth = 70;
+    
+        cout << "[";
+
+        int pos = barWidth * progress;
+    
+        for (int i = 0; i < barWidth; ++i) {
+            if (i < pos) cout << "=";
+            else if (i == pos) cout << ">";
+            else cout << " ";
+        }
+
+        cout << "] " << int(progress * 100.0) << " %\r";
+        cout.flush();
+        this_thread::sleep_for(1000ms);
+        progress += 0.16;
+    }
+
+	this_thread::sleep_for(2000ms);
+
+    system("clear");
+	cout << endl;
+    cout << setw(50) << "WELCOME TO THE TIC-TAC-TOE SERVER GAME" << endl;
+    cout << setw(50) << "--------------------------------------" << endl;
+    draw_board(board);
+    cout << setw(50) << "--------------------------------------" << endl;
+    cout << endl << "Wait for Clients to connect..!!" << endl << endl;
+}
 
 int main(int argc, char *argv[])
 {
-  try
-  {
-    if (argc < 2) {
-        fprintf(stderr,"ERROR, no port provided\n");
-        exit(1);
-    }
-  
-    char board[3][3] = { {' ', ' ', ' '},
-                         {' ', ' ', ' '},
-                         {' ', ' ', ' '} };
-  /*
-    cout << endl << "Wait for Server to load..!!" << endl;
-    cout << endl << "Will load in 10 Sec " << endl << "Loading "; 
-    for(int i = 0; i < 10; i++) {
-	    cout << ". ";
-	    cout.flush();
-	    sleep(1);
-    }
-
-
-
-float progress = 0.0;
-while (progress <= 1.0) {
-    int barWidth = 70;
-
-    std::cout << "[";
-    int pos = barWidth * progress;
-    for (int i = 0; i < barWidth; ++i) {
-        if (i < pos) std::cout << "=";
-        else if (i == pos) std::cout << ">";
-        else std::cout << " ";
-    }
-    std::cout << "] " << int(progress * 100.0) << " %\r";
-    std::cout.flush();
-    sleep(1);
-
-    progress += 0.16; // for demonstration only
-}
-std::cout << std::endl;
-
-*/
-
-    cout << endl << endl;
-    cout << "WELCOME TO THE TIC-TAC-TOE SERVER GAME" << endl;
-    cout << "--------------------------------------" << endl;
-    draw_board(board);
-    cout << endl << "Wait for Client to connect..!!" << endl;
-
-    asio::io_context io_context;
-    tcp::acceptor acceptor(io_context, tcp::endpoint(tcp::v4(), atoi(argv[1])));
-
-    pthread_mutex_init(&mutexcount, NULL); 
-
-    while(1)
-    {
-        if (player_count <= 2){
-            int *cli_sockfd = (int*)malloc(2*sizeof(int));
-            memset(cli_sockfd, 0, 2*sizeof(int));
-            
+  try {
+		if (argc < 2) {
+			cout << "ERROR, no port provided" << endl;
+			exit(1);
+		}
+		
+		design();
+        asio::io_context io_context;
+        tcp::acceptor acceptor(io_context, tcp::endpoint(tcp::v4(), atoi(argv[1])));
 	    
-	    int num_conn = 0;
-            while(num_conn < 2 && player_count <= 2){
-          
-            tcp::socket *ptr_socket = new tcp::socket(io_context);
-            #ifdef DEBUG
-            printf("[DEBUG] Listening for clients...\n");
-            #endif
-
-                acceptor.accept(*ptr_socket);
-                cli_sockfd[num_conn] = ptr_socket->native_handle();
-
-		if (cli_sockfd[num_conn] < 0)
-                   error("ERROR accepting a connection from a client.");
-
-                #ifdef DEBUG
-                printf("[DEBUG] Accepted connection from client %d\n", num_conn);
-                #endif
-
-                write(cli_sockfd[num_conn], &num_conn, sizeof(int));
-
-                #ifdef DEBUG
-                printf("[DEBUG] Sent client %d it's ID.\n", num_conn); 
-                #endif 
+		pthread_mutex_init(&mutexcount, NULL); 
+	   
+		while(1) {
+			if (player_count <= 1){
+				int *cli_sockfd = new int[2*sizeof(int)];
+		    	memset(cli_sockfd, 0, 2*sizeof(int));
+		    
+				int num_conn = 0;
+                while(num_conn < 2 && player_count <= 1) {					
+                    tcp::socket *ptr_socket = new tcp::socket(io_context);
                 
-                pthread_mutex_lock(&mutexcount);
-                player_count++;
-                printf("Number of players is now %d.\n", player_count);
-                pthread_mutex_unlock(&mutexcount);
-
-                if (num_conn == 0) {
-                    write_client_msg(cli_sockfd[0],"HLD");
-                    
                     #ifdef DEBUG
-                    printf("[DEBUG] Told client 0 to hold.\n");
+                        cout << "[DEBUG] Listening for clients..." << endl;
+                    #endif
+            
+                    acceptor.accept(*ptr_socket);
+                    cli_sockfd[num_conn] = ptr_socket->native_handle();
+            
+                    if (cli_sockfd[num_conn] < 0)
+                            error("ERROR accepting a connection from a client.");
+
+                    #ifdef DEBUG
+                    cout << "[DEBUG] Accepted connection from client " << num_conn << endl;
+                    #endif
+            
+                    write(cli_sockfd[num_conn], &num_conn, sizeof(int));
+
+                    #ifdef DEBUG
+                    cout << "[DEBUG] Sent client " << num_conn << " it's ID." << endl; 
                     #endif 
+                
+                    pthread_mutex_lock(&mutexcount);
+                    player_count++;
+                    cout << "Number of players is now " << player_count << "." << endl;
+                    pthread_mutex_unlock(&mutexcount);
+
+                    if (num_conn == 0) {
+                            write_client_msg(cli_sockfd[0],"HLD");
+                    
+                                #ifdef DEBUG
+                        cout << "[DEBUG] Told client 0 to hold." << endl;
+                                #endif 
+                    }	
+            
+                    num_conn++;
                 }
 
-                num_conn++;
+                #ifdef DEBUG
+                cout << "[DEBUG] Starting new game thread..." << endl;
+                #endif
 
-// delete []ptr_socket;
-            }
-        
-            #ifdef DEBUG
-            printf("[DEBUG] Starting new game thread...\n");
-            #endif
-        
-//	    std::thread thread1(run_game, (void*)cli_sockfd, ptr_socket);
-	    std::thread thread1(run_game, (void*)cli_sockfd, ptr_socket);
-	    thread1.detach();
+			    std::thread thread1(run_game, (void*)cli_sockfd);
+			    thread1.detach();
 
-	    //delete ptr_socket;
-
-	    printf("[DEBUG] New game thread started.\n");
-	}	
+			    cout << "New game thread started." << endl;
+			}
+	    }
     }
-  }
-  catch (std::exception& e)
-  {
+    catch (std::exception& e) {
     std::cerr << e.what() << std::endl;
-  }
+    }
 
-  pthread_mutex_destroy(&mutexcount);
-  pthread_exit(NULL);
-  return 0;
+    pthread_mutex_destroy(&mutexcount);
+
+    return 0;
 }
 
